@@ -38,3 +38,4 @@ minio-data/
 # Test coverage
 coverage/
 secret.json
+git/
