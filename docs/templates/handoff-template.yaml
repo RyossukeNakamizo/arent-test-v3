@@ -1,0 +1,28 @@
+# Context Handoff - Generated {YYYY-MM-DD HH:MM}
+context_handoff:
+  version: "1.0"
+  generated: "{timestamp}"
+  phase: "{phase}"
+  goal:
+    primary: "{objective}"
+    success_criteria: ["{criteria}"]
+  decisions:
+    - topic: "{area}"
+      choice: "{decided}"
+      adr: "ADR-{NNN}"
+  work_state:
+    current_branch: "{branch}"
+    last_tag: "{tag}"
+  debug_state:
+    total_debug_logs: 0
+    known_errors_count: 0
+  qcd_status:
+    last_qcd: "QCD-phase-{N}"
+    hours_used: 0
+    hours_remaining: 16
+  pending:
+    next_actions:
+      - priority: "high"
+        action: "{next step}"
+        agent: "{agent}"
+  summary: "{2-3 sentences}"

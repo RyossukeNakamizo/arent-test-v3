@@ -1,0 +1,193 @@
+# Claude Code Handoff Document
+# 作成日時: 2026-03-14T12:25:00Z
+# プロジェクト: arent-test-v3
+
+## 作業概要
+task: "claude-code-work-instructions.md に従った最終仕上げ作業"
+status: "全 Step 完了（Step 1-6）- 再検証済み"
+
+## 完了済みタスク
+completed:
+  - step: 1
+    name: "Docker コンテナ間通信の修正 + .env 作成"
+    details:
+      - ".env.example 修正済み（POSTGRES_HOST=db, MINIO_ENDPOINT=storage:9000）"
+      - "MINIO_EXTERNAL_ENDPOINT=localhost:9000 追加済み"
+      - ".env 作成済み（secret.json から APS認証情報反映）"
+      - ".gitignore に .env, secret.json 含まれていることを確認"
+    verification: "2026-03-14T12:23:00Z - PASS"
+
+  - step: 2
+    name: "Presigned URL エンドポイント問題の修正"
+    details:
+      - "MinioBlobStorage.cs 修正済み"
+      - "外部アクセス用の別 MinIO クライアントを作成"
+      - "署名が localhost:9000 で正しく計算される"
+    verification: "2026-03-14T12:23:00Z - PASS"
+
+  - step: 3
+    name: ".NET 10 Preview 問題の対応"
+    details:
+      - "パターンA: .NET 10 Preview イメージ利用可能"
+      - "mcr.microsoft.com/dotnet/sdk:10.0-preview 使用中"
+      - "ダウングレード不要"
+    verification: "2026-03-14T12:23:00Z - PASS"
+
+  - step: 4
+    name: "HEALTHCHECK 修正"
+    details:
+      - "Dockerfile: curl インストール + curl ベースの HEALTHCHECK"
+      - "docker-compose.yml: curl ベースに統一"
+      - "ポート: 5001 に統一（macOS の AirPlay が 5000 使用のため）"
+    verification: "2026-03-14T12:23:00Z - PASS"
+
+  - step: 5
+    name: "E2E 動作確認"
+    details:
+      - "Test 1: Health Check - PASS"
+      - "Test 2: Create Issue - PASS (ID: 1dd92961-95b4-43a3-be23-0abc6334279b)"
+      - "Test 3: Get Issue List - PASS (5 issues)"
+      - "Test 4: Photo Upload - PASS (ID: d4450d8d-6f6c-44d4-b550-3c673af7ffff)"
+      - "Test 5: Presigned URL 取得 - PASS (localhost:9000 確認)"
+      - "Test 6: Presigned URL で画像取得 - PASS (HTTP 200, PNG image)"
+      - "Test 7: 状態遷移テスト - PASS (Open → InProgress → Done)"
+      - "Test 8: 不正遷移テスト - PASS (400 Bad Request)"
+      - "Frontend: 起動確認 (http://localhost:3000)"
+      - "結果記録: docs/qa-e2e-results.md 作成済み"
+    verification: "2026-03-14T12:24:00Z - 8/8 PASS"
+
+  - step: 6
+    name: "Tailwind CSS 設定追加"
+    details:
+      - "frontend/src/app/globals.css 作成（@import tailwindcss）"
+      - "frontend/postcss.config.mjs 作成"
+      - "frontend/src/app/layout.tsx に globals.css インポート追加"
+      - "package.json に @tailwindcss/postcss 追加"
+      - "ビルド成功確認済み"
+    verification: "2026-03-14T12:24:00Z - PASS"
+
+## 解決済み問題
+resolved_issues:
+  - id: "R1"
+    description: ".env.example のホスト名がDocker内通信に非対応"
+    solution: "POSTGRES_HOST=db, MINIO_ENDPOINT=storage:9000 に修正"
+
+  - id: "R2"
+    description: "Presigned URLがコンテナ内ホスト名で生成される"
+    solution: "外部アクセス用の別MinIOクライアントを作成し、署名をlocalhost:9000で計算"
+
+  - id: "R3"
+    description: ".NET 10 Preview Dockerイメージの可用性リスク"
+    solution: "mcr.microsoft.com/dotnet/sdk:10.0-preview 利用可能確認済み"
+
+  - id: "R4"
+    description: "backend HEALTHCHECK が curl 依存（aspnetイメージに未搭載）"
+    solution: "apt-get install curl を追加し、curl ベースの HEALTHCHECK を実装"
+
+  - id: "R5"
+    description: "Tailwind CSS設定ファイル不在"
+    solution: "globals.css, postcss.config.mjs 作成、layout.tsx 修正"
+
+  - id: "PHOTO-UPLOAD-CONCURRENCY"
+    description: "写真アップロード時に DbUpdateConcurrencyException が発生"
+    solution: |
+      EF Core Owned Entity の変更追跡問題を回避するため、
+      Photo を直接 DbContext.Photos に追加する方式に変更。
+      - IIssueRepository に AddPhotoAsync メソッド追加
+      - PostgresIssueRepository で ExecuteUpdateAsync 使用
+      - IssueCommandHandler で ExistsAsync + AddPhotoAsync 使用
+
+## 未完了タスク
+pending: []
+
+## ファイル変更履歴
+modified_files:
+  - path: ".env.example"
+    changes: "ホスト名修正 + MINIO_EXTERNAL_ENDPOINT 追加 + ポート 5001"
+  - path: ".env"
+    changes: "新規作成（secret.json から APS 認証情報反映）"
+  - path: "backend/src/Infrastructure/BlobStorage/MinioBlobStorage.cs"
+    changes: "外部アクセス用 MinIO クライアント追加"
+  - path: "backend/src/Domain/ValueObjects/Location.cs"
+    changes: "record → class に変更"
+  - path: "backend/src/Infrastructure/Persistence/PostgresIssueRepository.cs"
+    changes: "ExistsAsync, AddPhotoAsync メソッド追加"
+  - path: "backend/src/Application/Interfaces/IRepositories.cs"
+    changes: "ExistsAsync, AddPhotoAsync インターフェース追加"
+  - path: "backend/src/Application/Commands/IssueCommandHandler.cs"
+    changes: "Photo アップロードロジック修正"
+  - path: "backend/Dockerfile"
+    changes: "curl インストール + ポート 5001 + curl ベース HEALTHCHECK"
+  - path: "docker-compose.yml"
+    changes: "ポート 5001 + curl ベース healthcheck"
+  - path: "frontend/src/components/ApsViewer.tsx"
+    changes: "window.THREE 型定義追加"
+  - path: "docs/qa-e2e-results.md"
+    changes: "新規作成"
+  - path: "frontend/src/app/globals.css"
+    changes: "新規作成（Tailwind CSS インポート）"
+  - path: "frontend/postcss.config.mjs"
+    changes: "新規作成（@tailwindcss/postcss 設定）"
+  - path: "frontend/src/app/layout.tsx"
+    changes: "globals.css インポート追加"
+  - path: "frontend/package.json"
+    changes: "@tailwindcss/postcss 依存追加"
+
+## 環境状態
+environment:
+  docker_services:
+    - name: "frontend"
+      port: 3000
+      status: "running"
+    - name: "backend"
+      port: 5001
+      status: "healthy"
+    - name: "db"
+      port: 5432
+      status: "healthy"
+    - name: "storage"
+      port: "9000-9001"
+      status: "healthy"
+
+## 最終チェックリスト
+final_checklist:
+  - item: ".env 作成済み（POSTGRES_HOST=db, MINIO_ENDPOINT=storage:9000）"
+    status: "PASS"
+  - item: "MINIO_EXTERNAL_ENDPOINT=localhost:9000 設定済み"
+    status: "PASS"
+  - item: "MinioBlobStorage Presigned URL ホスト名書き換え実装済み"
+    status: "PASS"
+  - item: ".NET SDK/Runtimeビルド成功（10 Preview）"
+    status: "PASS"
+  - item: "HEALTHCHECK: curl 方式に修正（Dockerfile + docker-compose）"
+    status: "PASS"
+  - item: "docker compose up --build で全4サービス起動"
+    status: "PASS"
+  - item: "API: 指摘CRUD + 写真アップロード + Presigned URL取得が動作"
+    status: "PASS"
+  - item: "API: 状態遷移 Open→InProgress→Done が動作"
+    status: "PASS"
+  - item: "Presigned URL が localhost:9000 ベースで返る"
+    status: "PASS"
+  - item: ".env が .gitignore に含まれている"
+    status: "PASS"
+  - item: "Tailwind CSS 設定追加"
+    status: "PASS"
+  - item: "docs/qa-e2e-results.md 作成"
+    status: "PASS"
+
+## 参照ドキュメント
+references:
+  - "claude-code-work-instructions.md"
+  - "CLAUDE.md"
+  - "docs/references/resource-map.md"
+  - "docs/qa-e2e-results.md"
+
+## 次のセッションへの引き継ぎ事項
+next_session_notes:
+  - "全6ステップ完了済み。システムは本番デプロイ可能な状態"
+  - "E2E テスト 8/8 PASS"
+  - "Docker コンテナ全て healthy 状態"
+  - "Frontend: http://localhost:3000"
+  - "Backend API: http://localhost:5001"
+  - "MinIO Console: http://localhost:9001"
