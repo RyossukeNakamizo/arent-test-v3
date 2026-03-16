@@ -24,9 +24,14 @@ export default function IssueForm({ hitResult, onCreated, onCancel }: IssueFormP
   const locationType = hitResult.dbId ? "Element" : "Space";
 
   const handleSubmit = async () => {
-    if (!title.trim()) return;
+    console.log("[IssueForm] handleSubmit called", { title, files: files?.length });
+    if (!title.trim()) {
+      console.log("[IssueForm] Title is empty, returning");
+      return;
+    }
     setSubmitting(true);
     try {
+      console.log("[IssueForm] Creating issue...");
       const result: any = await createIssue({
         title,
         description,
@@ -37,19 +42,27 @@ export default function IssueForm({ hitResult, onCreated, onCancel }: IssueFormP
           worldPosition: hitResult.worldPosition,
         },
       });
+      console.log("[IssueForm] Issue created:", result);
 
       // Upload photos if any
-      if (files && result.id) {
+      if (files && files.length > 0 && result.id) {
+        console.log("[IssueForm] Uploading", files.length, "photos to issue", result.id);
         for (let i = 0; i < files.length; i++) {
+          console.log("[IssueForm] Uploading photo", i + 1, files[i].name);
           await uploadPhoto(result.id, files[i], "Before");
+          console.log("[IssueForm] Photo", i + 1, "uploaded");
         }
+      } else {
+        console.log("[IssueForm] No photos to upload", { files, resultId: result.id });
       }
 
       setTitle("");
       setDescription("");
       setFiles(null);
       onCreated();
+      console.log("[IssueForm] Success, form cleared");
     } catch (err: any) {
+      console.error("[IssueForm] Error:", err);
       alert(`Error: ${err.message}`);
     } finally {
       setSubmitting(false);

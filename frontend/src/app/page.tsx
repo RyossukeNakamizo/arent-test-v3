@@ -12,7 +12,7 @@ import { getIssues } from "@/lib/api";
 
 const ApsViewer = dynamic(() => import("@/components/ApsViewer"), { ssr: false });
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5001";
 
 export default function Home() {
   const [urn, setUrn] = useState<string | null>(null);
@@ -68,16 +68,23 @@ export default function Home() {
   const handlePinClick = useCallback((pinId: string) => {
     const issue = allIssues.find((i) => i.id === pinId);
     if (issue) {
+      console.log("[page] handlePinClick:", pinId);
       setSelectedIssue(issue);
       setShowForm(false);
+      setHitResult(null);  // ピン登録モードを完全にOFF
     }
   }, [allIssues]);
 
   const handleHitTest = useCallback((result: HitTestResult) => {
+    // 指摘詳細表示中はピン登録モードに入らない（プログラム的selectの誤発火防止）
+    if (selectedIssue) {
+      console.log("[page] handleHitTest blocked: selectedIssue is set");
+      return;
+    }
     setHitResult(result);
     setShowForm(true);
     setSelectedIssue(null);
-  }, []);
+  }, [selectedIssue]);
 
   const handleIssueCreated = () => {
     setShowForm(false);
@@ -86,8 +93,10 @@ export default function Home() {
   };
 
   const handleSelectIssue = (issue: Issue) => {
+    console.log("[page] handleSelectIssue called:", issue.id, issue.title);
     setSelectedIssue(issue);
     setShowForm(false);
+    setHitResult(null);  // ピン登録モードを完全にOFF
   };
 
   const handleStatusChange = (issueId: string, newStatus: string) => {

@@ -15,7 +15,7 @@ interface IssueDetailProps {
   showToast?: (type: "success" | "error", message: string, thumbnail?: string) => void;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5001";
 
 export default function IssueDetail({ issue, onStatusChange, onPhotoUploaded, onClose, showToast }: IssueDetailProps) {
   const [uploading, setUploading] = useState(false);
@@ -24,23 +24,37 @@ export default function IssueDetail({ issue, onStatusChange, onPhotoUploaded, on
   const [lightboxPhoto, setLightboxPhoto] = useState<Photo | null>(null);
   const [hoveredPhotoId, setHoveredPhotoId] = useState<string | null>(null);
 
-  // 写真URLを取得
+  // 写真URLを取得（issue.id が変わったときのみ実行）
   useEffect(() => {
-    if (!issue.photos || issue.photos.length === 0) return;
+    // issue.id が変わったら photoUrls をリセットして新しく取得
+    let cancelled = false;
+
     const fetchUrls = async () => {
-      const urls: Record<string, string> = {};
+      if (!issue.photos || issue.photos.length === 0) {
+        setPhotoUrls({});
+        return;
+      }
+
+      const newUrls: Record<string, string> = {};
       for (const photo of issue.photos) {
+        if (cancelled) return;
         try {
           const { url } = await getPhotoUrl(issue.id, photo.id);
-          urls[photo.id] = url;
+          newUrls[photo.id] = url;
         } catch {
           // URL取得失敗時はスキップ
         }
       }
-      setPhotoUrls(urls);
+      if (!cancelled) {
+        setPhotoUrls(newUrls);
+      }
     };
+
+    setPhotoUrls({}); // リセット
     fetchUrls();
-  }, [issue.id, issue.photos]);
+
+    return () => { cancelled = true; };
+  }, [issue.id]); // issue.id のみを依存配列に
 
   const handleTransition = async (target: IssueStatus): Promise<void> => {
     const res = await fetch(`${API_BASE}/api/issues/${issue.id}/status`, {

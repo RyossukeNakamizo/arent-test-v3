@@ -5,17 +5,24 @@
  * APS トークン取得は必ず Backend /api/aps/token 経由。
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5001";
+
+console.log("[api] API_BASE =", API_BASE);
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  console.log("[api] request:", options?.method ?? "GET", url);
+  const res = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
     },
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    console.error("[api] request failed:", res.status, res.statusText);
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
@@ -36,15 +43,23 @@ export async function createIssue(command: unknown) {
 
 /** 写真アップロード */
 export async function uploadPhoto(issueId: string, file: File, photoType: "Before" | "After") {
+  const url = `${API_BASE}/api/issues/${issueId}/photos`;
+  console.log("[api] uploadPhoto:", url, { fileName: file.name, fileSize: file.size, photoType });
   const formData = new FormData();
   formData.append("file", file);
   formData.append("photoType", photoType);
-  const res = await fetch(`${API_BASE}/api/issues/${issueId}/photos`, {
+  const res = await fetch(url, {
     method: "POST",
     body: formData,
   });
-  if (!res.ok) throw new Error(`Upload error: ${res.status}`);
-  return res.json();
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("[api] uploadPhoto failed:", res.status, text);
+    throw new Error(`Upload error: ${res.status}`);
+  }
+  const result = await res.json();
+  console.log("[api] uploadPhoto success:", result);
+  return result;
 }
 
 /** 写真Presigned URL取得 */

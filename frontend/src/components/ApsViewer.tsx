@@ -46,6 +46,7 @@ export default function ApsViewer({ urn, onHitTest, pins, onPinClick, selectedIs
   const [error, setError] = useState<string | null>(null);
   const [pinPositions, setPinPositions] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
+  const programmaticSelectRef = useRef(false);
 
   // Load APS Viewer SDK script
   useEffect(() => {
@@ -114,6 +115,11 @@ export default function ApsViewer({ urn, onHitTest, pins, onPinClick, selectedIs
 
         // Click handler for pin placement
         viewer.addEventListener(window.Autodesk.Viewing.SELECTION_CHANGED_EVENT, () => {
+          // プログラム的なselect（一覧クリック→focusDbId変更）の場合はスキップ
+          if (programmaticSelectRef.current) {
+            programmaticSelectRef.current = false;
+            return;
+          }
           if (!onHitTest) return;
           const selected = viewer.getSelection();
           if (selected.length > 0) {
@@ -178,6 +184,7 @@ export default function ApsViewer({ urn, onHitTest, pins, onPinClick, selectedIs
     if (!viewer || !viewer.model) return;
 
     if (focusDbId) {
+      programmaticSelectRef.current = true;
       viewer.select([focusDbId]);
       viewer.fitToView([focusDbId]);
     } else if (focusPosition) {

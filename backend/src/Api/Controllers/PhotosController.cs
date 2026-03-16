@@ -47,20 +47,21 @@ public class PhotosController : ControllerBase
         }
     }
 
-    /// <summary>写真Presigned URL取得</summary>
+    /// <summary>写真URL取得（バケットがpublicの場合は直接URL、それ以外はPresigned URL）</summary>
     [HttpGet("{photoId:guid}/url")]
     public async Task<IActionResult> GetPresignedUrl(Guid issueId, Guid photoId, CancellationToken ct)
     {
         // Construct the blob key pattern
         var key = $"issues/{issueId}/photos/{photoId}";
-        try
-        {
-            var url = await _blob.GetPresignedUrlAsync(key, 3600, ct);
-            return Ok(new { url, expiresIn = 3600 });
-        }
-        catch
-        {
-            return NotFound(new { error = new { code = "NOT_FOUND", message = "Photo not found" } });
-        }
+
+        // バケットがpublic設定のため、直接URLを返す
+        // MinIO external endpoint (ブラウザからアクセス可能な URL)
+        var externalEndpoint = Environment.GetEnvironmentVariable("MINIO_EXTERNAL_ENDPOINT") ?? "localhost:9000";
+        var bucket = Environment.GetEnvironmentVariable("MINIO_BUCKET") ?? "issue-photos";
+        var useSsl = Environment.GetEnvironmentVariable("MINIO_USE_SSL") == "true";
+        var protocol = useSsl ? "https" : "http";
+
+        var url = $"{protocol}://{externalEndpoint}/{bucket}/{key}";
+        return Ok(new { url, expiresIn = 3600 });
     }
 }

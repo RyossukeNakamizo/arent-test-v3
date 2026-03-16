@@ -1,0 +1,191 @@
+# Claude Code Handoff Document
+# 作成日時: 2026-03-15T10:00:00Z
+# 更新日時: 2026-03-15T12:00:00Z
+# プロジェクト: arent-test-v3
+
+## 作業概要
+task: "ドメインユニットテスト追加 + Git整備 + ドキュメント整備"
+status: "完了"
+
+## 完了済みタスク
+completed:
+  - step: 1
+    name: "ドメインユニットテスト作成"
+    details:
+      - "IssueTests.cs (12テストケース)"
+      - "LocationTests.cs (9テストケース)"
+      - "xUnit テストプロジェクト新規作成"
+      - "全21テスト PASS"
+    files_created:
+      - "backend/tests/IssueManager.Api.Tests.csproj"
+      - "backend/tests/Domain/Entities/IssueTests.cs"
+      - "backend/tests/Domain/ValueObjects/LocationTests.cs"
+    files_modified:
+      - "backend/IssueManager.Api.csproj (tests除外設定追加)"
+    verification: "docker run dotnet test → 21/21 PASSED"
+
+  - step: 2
+    name: "Git整備"
+    details:
+      - "/git-sync スキル作成（前セッション）"
+      - "ベアリポジトリ作成: git/arent-test-v3.git"
+      - "コミット履歴整理"
+    files_created:
+      - ".claude/skills/git-sync.md"
+      - ".claude/settings.json (skills登録)"
+
+  - step: 3
+    name: "ドキュメント整備（README + アーキテクチャ + マニュアル）"
+    details:
+      - "README.md: プロジェクト概要・セットアップ手順・機能一覧"
+      - "ARCHITECTURE.md: Clean Architecture設計・レイヤー構成・ドメインモデル"
+      - "MANUAL.md: 操作マニュアル・FAQ"
+    files_created:
+      - "docs/ARCHITECTURE.md"
+      - "docs/MANUAL.md"
+    files_modified:
+      - "README.md (全面刷新: 115行)"
+    commit: "c68eaba Docs: add README, architecture doc, and user manual"
+
+  - step: 4
+    name: "設計ドキュメント追加（ER図 + API仕様 + 本番構成）"
+    details:
+      - "ER.md: エンティティ関係図・設計判断・将来拡張方針"
+      - "API.md: REST APIリファレンス（Issues/Photos/APS）"
+      - "ARCHITECTURE.md追記: §8.5外部依存隔離・§8.6将来本番構成"
+    files_created:
+      - "docs/ER.md"
+      - "docs/API.md"
+    files_modified:
+      - "docs/ARCHITECTURE.md (§8.5/§8.6追記)"
+    commit: "f61bf1b Docs: add ER diagram, API reference, and architecture details (§8.5/8.6)"
+
+## Git履歴
+git_log:
+  - hash: "f61bf1b"
+    message: "Docs: add ER diagram, API reference, and architecture details (§8.5/8.6)"
+  - hash: "c68eaba"
+    message: "Docs: add README, architecture doc, and user manual"
+  - hash: "8ebb267"
+    message: "Fix: exclude tests directory from main project compilation"
+  - hash: "d8e5d96"
+    message: "Test: add domain unit tests (21 cases) for Issue and Location"
+  - hash: "cc5b516"
+    message: "Fix: exclude bare repository from tracking"
+  - hash: "ff434f2"
+    message: "Add /git-sync skill for local repository sync"
+  - hash: "8db51ee"
+    message: "Initial commit: APS Issue Manager with UX improvements"
+
+## ドキュメント一覧
+documentation:
+  - file: "README.md"
+    description: "プロジェクト概要・技術スタック・セットアップ手順・主な機能"
+  - file: "docs/ARCHITECTURE.md"
+    description: "Clean Architecture設計・レイヤー構成・ドメインモデル・APS連携・§8.5外部依存隔離・§8.6将来本番構成"
+  - file: "docs/MANUAL.md"
+    description: "操作マニュアル・基本操作・FAQ"
+  - file: "docs/ER.md"
+    description: "ER図・設計判断（Location埋め込み・Blob分離）・将来拡張"
+  - file: "docs/API.md"
+    description: "REST APIリファレンス（Issues CRUD・Photos・APS Token Proxy）"
+  - file: "docs/handoff-2026-03-15.yaml"
+    description: "本ハンズオフドキュメント"
+
+## テスト詳細
+test_cases:
+  IssueTests:
+    - "StartProgress_FromOpen_ChangesStatusToInProgress"
+    - "StartProgress_FromInProgress_ThrowsInvalidOperationException"
+    - "StartProgress_FromDone_ThrowsInvalidOperationException"
+    - "Complete_FromInProgress_ChangesStatusToDone"
+    - "Complete_FromOpen_ThrowsInvalidOperationException"
+    - "Complete_FromDone_ThrowsInvalidOperationException"
+    - "FullTransition_OpenToInProgressToDone_Succeeds"
+    - "UpdateDescription_WithValidText_UpdatesDescription"
+    - "AddPhoto_ValidPhoto_AppearsInPhotosCollection"
+    - "Create_WithEmptyTitle_ThrowsArgumentException"
+    - "Create_WithValidData_SetsInitialStatusToOpen"
+    - "Create_WithValidData_GeneratesNonEmptyId"
+  LocationTests:
+    - "Element_WithValidDbId_CreatesElementLocation"
+    - "Element_WithDbIdAndWorldPosition_CreatesLocationWithBoth"
+    - "Element_WithNullDbId_ThrowsArgumentException"
+    - "Space_WithValidWorldPosition_CreatesSpaceLocation"
+    - "Space_WithNullWorldPosition_ThrowsArgumentException"
+    - "Space_WithDbIdAndWorldPosition_CreatesLocationWithBoth"
+    - "WorldPosition_WithValidCoordinates_StoresValues"
+    - "WorldPosition_WithNegativeCoordinates_StoresValues"
+    - "WorldPosition_WithZeroCoordinates_StoresValues"
+
+## プロジェクト構造
+project_structure:
+  backend:
+    csharp_files: 18
+    structure:
+      - "Program.cs"
+      - "src/Api/Controllers/ (3 files)"
+      - "src/Application/Commands/, Interfaces/, Queries/"
+      - "src/Domain/Entities/, Enums/, ValueObjects/"
+      - "src/Infrastructure/ApsProxy/, BlobStorage/, Persistence/"
+      - "tests/Domain/Entities/, ValueObjects/"
+  frontend:
+    typescript_files: 12
+    structure:
+      - "src/app/layout.tsx, page.tsx"
+      - "src/components/ (8 files)"
+      - "src/lib/api.ts"
+      - "src/types/issue.ts"
+  docs:
+    files:
+      - "README.md"
+      - "docs/ARCHITECTURE.md"
+      - "docs/MANUAL.md"
+      - "docs/ER.md"
+      - "docs/API.md"
+      - "docs/handoff-2026-03-15.yaml"
+  docker:
+    services:
+      - "frontend: :3000 (Next.js)"
+      - "backend: :5001 (.NET 10)"
+      - "db: :5432 (PostgreSQL 16)"
+      - "storage: :9000/:9001 (MinIO)"
+
+## コマンドリファレンス
+commands:
+  run_tests: |
+    cd backend
+    docker run --rm -v "$(pwd):/src" -w /src \
+      mcr.microsoft.com/dotnet/sdk:10.0-preview \
+      dotnet test tests/ --logger "console;verbosity=detailed"
+  git_sync: "/git-sync [コミットメッセージ]"
+  start_app: "docker compose up --build"
+  access_urls:
+    app: "http://localhost:3000"
+    api_docs: "http://localhost:5001/swagger"
+    minio_console: "http://localhost:9001 (minioadmin/minioadmin)"
+
+## 前セッションからの引き継ぎ
+previous_session:
+  document: "docs/handoff-2026-03-14-ux.yaml"
+  summary:
+    - "UX改善 Step 1-5 完了"
+    - "bugfix-1: カメラ遷移Matrix3エラー修正"
+    - "全サービス稼働確認済み"
+
+## 次のセッションへの引き継ぎ
+next_session_notes:
+  - "ドキュメント整備完了: README, ARCHITECTURE, MANUAL, ER, API"
+  - "ドメインユニットテスト21件追加済み（全PASS）"
+  - "テスト実行: Docker経由（ローカルにdotnet不要）"
+  - "Git: 7コミットの整理されたヒストリ"
+  - "/git-sync スキルでベアリポジトリ同期可能"
+  - "ベアリポジトリ: git/arent-test-v3.git"
+  - "本ハンズオフは未コミット（必要に応じてコミット）"
+
+## 環境情報
+environment:
+  framework: ".NET 10 Preview"
+  test_framework: "xUnit 2.x"
+  docker_image: "mcr.microsoft.com/dotnet/sdk:10.0-preview"
+  local_dotnet: "未インストール（Docker経由でテスト実行）"

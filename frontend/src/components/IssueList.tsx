@@ -68,7 +68,10 @@ export default function IssueList({ refreshKey, onSelectIssue, selectedIssueId }
           issues.map((issue) => (
             <div
               key={issue.id}
-              onClick={() => onSelectIssue(issue)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectIssue(issue);
+              }}
               className={`
                 py-2.5 px-4 border-b border-gray-100 cursor-pointer transition-all duration-150
                 border-l-4 ${BORDER_COLORS[issue.status]}
