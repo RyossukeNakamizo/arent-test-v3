@@ -30,6 +30,7 @@ Thumbs.db
 npm-debug.log*
 
 # Docker
+docker-compose.yml
 docker-compose.override.yml
 
 # MinIO data
