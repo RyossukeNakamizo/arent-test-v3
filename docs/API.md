@@ -4,6 +4,50 @@ Base URL: `http://localhost:5001/api`
 
 ---
 
+## API概要図
+
+```mermaid
+graph LR
+    subgraph Frontend["Frontend (Next.js)"]
+        Viewer["ApsViewer"]
+        IssueList["IssueList"]
+        IssueForm["IssueForm"]
+        IssueDetail["IssueDetail"]
+    end
+
+    subgraph Backend["Backend (.NET API)"]
+        IssuesAPI["/api/issues"]
+        PhotosAPI["/api/issues/{id}/photos"]
+        ApsAPI["/api/aps"]
+    end
+
+    IssueList --> IssuesAPI
+    IssueForm --> IssuesAPI
+    IssueDetail --> IssuesAPI
+    IssueDetail --> PhotosAPI
+    Viewer --> ApsAPI
+
+    style IssuesAPI fill:#c8e6c9
+    style PhotosAPI fill:#c8e6c9
+    style ApsAPI fill:#c8e6c9
+```
+
+## エンドポイント一覧
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | /issues | 指摘一覧取得 |
+| POST | /issues | 指摘新規作成 |
+| GET | /issues/{id} | 指摘詳細取得 |
+| PATCH | /issues/{id}/status | 状態更新 |
+| DELETE | /issues/{id} | 指摘削除 |
+| POST | /issues/{id}/photos | 写真アップロード |
+| GET | /issues/{id}/photos/{photoId}/url | 写真URL取得 |
+| GET | /aps/viewer-token | Viewerトークン取得 |
+| GET | /aps/urn | モデルURN取得 |
+
+---
+
 ## Issues
 
 ### GET /issues

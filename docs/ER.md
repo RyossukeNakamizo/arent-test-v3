@@ -1,6 +1,36 @@
 # ER図（ドメインモデル）
 
-## エンティティ関係図
+## Mermaid ER図
+
+```mermaid
+erDiagram
+    ISSUES {
+        uuid id PK
+        varchar title "NOT NULL"
+        text description
+        varchar issue_type "Safety|Quality|Progress|Other"
+        varchar status "Open|InProgress|Done"
+        varchar location_type "Element|Space"
+        integer location_db_id "Element指摘用"
+        float location_x "Space指摘用"
+        float location_y "Space指摘用"
+        float location_z "Space指摘用"
+        timestamp created_at "NOT NULL"
+        timestamp updated_at "NOT NULL"
+    }
+
+    PHOTOS {
+        uuid id PK
+        uuid issue_id FK
+        varchar blob_key "NOT NULL"
+        varchar photo_type "Before|After"
+        timestamp created_at "NOT NULL"
+    }
+
+    ISSUES ||--o{ PHOTOS : "has"
+```
+
+## エンティティ関係図（テキスト版）
 ```
 issues
 ├── id: UUID (PK)
@@ -20,11 +50,36 @@ photos
 ├── id: UUID (PK)
 ├── issue_id: UUID (FK → issues.id)
 ├── blob_key: VARCHAR(500) NOT NULL   -- MinIOオブジェクトキー
-├── label: VARCHAR(100)               -- 是正前 / 是正後
+├── photo_type: VARCHAR(100)          -- Before / After
 └── created_at: TIMESTAMP NOT NULL
 ```
 
 **リレーション**: issues 1 ─── 0..* photos
+
+## 状態遷移図
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open: 新規作成
+    Open --> InProgress: StartProgress()
+    InProgress --> Done: Complete()
+    Done --> [*]
+
+    note right of Open
+        初期状態
+        未着手の指摘
+    end note
+
+    note right of InProgress
+        対応中
+        作業者が着手
+    end note
+
+    note right of Done
+        完了
+        逆行不可
+    end note
+```
 
 ## 設計上の判断
 

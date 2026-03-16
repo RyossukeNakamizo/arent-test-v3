@@ -6,6 +6,80 @@
 ドメインロジックがインフラ実装に依存しない構造を維持し、テスタビリティを確保する。
 
 ## レイヤー構成
+
+### Mermaid: 全体レイヤー図
+
+```mermaid
+graph TB
+    subgraph External["外部システム"]
+        Browser["ブラウザ<br/>(Next.js Frontend)"]
+        APS["Autodesk Platform Services"]
+        MinIO["MinIO<br/>(Blob Storage)"]
+        Postgres["PostgreSQL<br/>(Database)"]
+    end
+
+    subgraph API["API Layer (Controllers)"]
+        IssuesController
+        PhotosController
+        ApsController
+    end
+
+    subgraph Application["Application Layer"]
+        IssueCommandHandler["IssueCommandHandler<br/>(Write)"]
+        IssueQueryHandler["IssueQueryHandler<br/>(Read)"]
+    end
+
+    subgraph Domain["Domain Layer"]
+        Issue["Issue<br/>(Aggregate Root)"]
+        Photo["Photo<br/>(Entity)"]
+        Location["Location<br/>(Value Object)"]
+        Enums["Enums<br/>(IssueStatus, PhotoType, etc.)"]
+    end
+
+    subgraph Infrastructure["Infrastructure Layer"]
+        PostgresRepo["PostgresIssueRepository"]
+        MinioBlobStorage["MinioBlobStorage"]
+        ApsService["ApsService"]
+        AppDbContext["AppDbContext<br/>(EF Core)"]
+    end
+
+    Browser --> API
+    API --> Application
+    Application --> Domain
+    Infrastructure --> Domain
+    Infrastructure -.->|implements| Application
+
+    PostgresRepo --> Postgres
+    MinioBlobStorage --> MinIO
+    ApsService --> APS
+
+    style Domain fill:#e1f5fe
+    style Application fill:#fff3e0
+    style API fill:#f3e5f5
+    style Infrastructure fill:#e8f5e9
+```
+
+### Mermaid: 依存関係の方向
+
+```mermaid
+graph LR
+    API["API Layer"] --> App["Application Layer"]
+    App --> Domain["Domain Layer"]
+    Infra["Infrastructure Layer"] --> Domain
+    Infra -.->|"implements<br/>interfaces"| App
+
+    style Domain fill:#e1f5fe,stroke:#0288d1
+    style App fill:#fff3e0,stroke:#f57c00
+    style API fill:#f3e5f5,stroke:#7b1fa2
+    style Infra fill:#e8f5e9,stroke:#388e3c
+```
+
+**ポイント**:
+- すべての矢印は **Domain Layer に向かう**
+- Infrastructure は Application のインターフェースを **実装** する（点線）
+- Domain Layer は他のどの層にも依存しない（純粋なビジネスロジック）
+
+### テキスト版レイヤー図
 ```
 ┌─────────────────────────────────────────────┐
 │  Frontend (Next.js)                          │
@@ -93,6 +167,47 @@ Browser → GET /api/aps/token → ApsController → Autodesk OAuth API
 ```
 
 ## 写真管理フロー
+
+### Mermaid: 写真アップロードシーケンス
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant PhotosController
+    participant CommandHandler
+    participant BlobStorage
+    participant MinIO
+    participant Issue
+    participant Repository
+    participant Database
+
+    Browser->>PhotosController: POST /api/issues/{id}/photos
+    PhotosController->>CommandHandler: HandleAsync(UploadPhotoCommand)
+
+    Note over CommandHandler: 1. Blob先行保存
+    CommandHandler->>BlobStorage: UploadAsync(stream)
+    BlobStorage->>MinIO: PUT Object
+    MinIO-->>BlobStorage: OK
+    BlobStorage-->>CommandHandler: blobKey
+
+    Note over CommandHandler: 2. DB更新
+    CommandHandler->>Repository: GetByIdAsync(issueId)
+    Repository->>Database: SELECT
+    Database-->>Repository: Issue
+    Repository-->>CommandHandler: Issue
+
+    CommandHandler->>Issue: AddPhoto(blobKey, photoType)
+    Note over Issue: ドメインルール検証
+
+    CommandHandler->>Repository: UpdateAsync(issue)
+    Repository->>Database: INSERT Photo
+    Database-->>Repository: OK
+
+    CommandHandler-->>PhotosController: photoId
+    PhotosController-->>Browser: 201 Created
+```
+
+### テキスト版
 ```
 クライアント → POST /api/photos/upload
             → MinIO に保存（内部エンドポイント: storage:9000）
@@ -103,6 +218,37 @@ Browser → GET /api/aps/token → ApsController → Autodesk OAuth API
 
 Dockerネットワーク内ではサービス名（`storage`）でDNS解決するが、
 ブラウザからはアクセス不可のため Presigned URL のホスト名を書き換える。
+
+### Mermaid: 状態遷移フロー
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant IssuesController
+    participant CommandHandler
+    participant Issue
+    participant Repository
+
+    Browser->>IssuesController: PATCH /api/issues/{id}/status
+    IssuesController->>CommandHandler: HandleAsync(UpdateStatusCommand)
+    CommandHandler->>Repository: GetByIdAsync(id)
+    Repository-->>CommandHandler: Issue
+
+    CommandHandler->>Issue: UpdateStatus(newStatus)
+
+    alt 有効な遷移
+        Note over Issue: Open→InProgress, InProgress→Done
+        Issue-->>CommandHandler: OK
+        CommandHandler->>Repository: UpdateAsync(issue)
+        CommandHandler-->>IssuesController: Success
+        IssuesController-->>Browser: 200 OK
+    else 無効な遷移
+        Note over Issue: Done→Open, Open→Done (スキップ)
+        Issue-->>CommandHandler: InvalidOperationException
+        CommandHandler-->>IssuesController: Error
+        IssuesController-->>Browser: 400 Bad Request
+    end
+```
 
 ## テスト戦略
 
