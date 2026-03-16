@@ -47,3 +47,5 @@ tasks/
 
 # Bare repository
 git/
+claude-code-work-instructions.md
+ux-improvement-instructions.md
