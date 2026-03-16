@@ -1,0 +1,170 @@
+# Context Handoff - Session G
+# Date: 2026-03-16
+# Author: Claude Opus 4.5
+
+session:
+  id: "Session-G"
+  date: "2026-03-16"
+  duration: "~3 hours"
+  commit: "8130369 fix: resolve issue detail panel and photo display bugs"
+
+summary: |
+  Session Gでは、指摘一覧クリック時の詳細パネル表示バグと写真表示バグを修正。
+  根本原因はApsViewerのSELECTION_CHANGED_EVENTがプログラム的なviewer.select()でも
+  発火し、handleHitTest経由でselectedIssueがnullに戻されていたこと。
+  また、MinIOのPresigned URL署名問題を回避するため、バケットをpublic downloadに設定し
+  直接URLを返すように変更。
+
+completed_tasks:
+  - title: "指摘一覧クリック→詳細パネル表示バグ修正"
+    files:
+      - "frontend/src/components/ApsViewer.tsx"
+      - "frontend/src/app/page.tsx"
+    details: |
+      - programmaticSelectRef を追加してプログラム的selectを区別
+      - SELECTION_CHANGED_EVENT ハンドラにガード追加
+      - handleHitTest に selectedIssue ガード追加
+
+  - title: "写真表示バグ修正"
+    files:
+      - "backend/src/Api/Controllers/PhotosController.cs"
+    details: |
+      - Presigned URLの署名が403 Forbiddenを返す問題を回避
+      - MinIOバケットをpublic download設定に変更
+      - PhotosControllerで直接URLを返すように修正
+
+  - title: "Docker/Healthcheck修正"
+    files:
+      - "backend/Dockerfile"
+      - "docker-compose.yml"
+    details: |
+      - .NET 10 GA イメージに更新（10.0-preview → 10.0）
+      - wget をインストールしてhealthcheckに使用（curl未搭載）
+      - ポート5001に統一（macOS AirPlay回避）
+
+  - title: "API_BASE ポート修正"
+    files:
+      - "frontend/src/lib/api.ts"
+      - "frontend/src/app/page.tsx"
+      - "frontend/src/components/IssueDetail.tsx"
+      - "frontend/src/components/IssueForm.tsx"
+    details: |
+      - デフォルトポートを5000から5001に修正
+
+current_state:
+  services:
+    frontend:
+      port: 3000
+      status: "running"
+      framework: "Next.js 15.5.12"
+    backend:
+      port: 5001
+      status: "healthy"
+      framework: ".NET 10 GA"
+    storage:
+      port: 9000
+      console_port: 9001
+      status: "healthy"
+      bucket_policy: "public download"
+    db:
+      port: 5432
+      status: "healthy"
+      database: "issue_manager"
+
+  features_verified:
+    - "指摘一覧クリック → 詳細パネル表示"
+    - "ピンモード中の一覧クリック → 詳細パネル表示"
+    - "3Dピンクリック → 詳細パネル表示"
+    - "写真サムネイル表示（実画像）"
+    - "新規指摘登録フロー"
+    - "状態変更（未対応→対応中→完了）"
+    - "Element型カメラフォーカス（fitToView）"
+    - "Space型カメラナビゲーション（動的オフセット）"
+
+known_issues:
+  - id: "MINIO-PRESIGNED-403"
+    severity: "low"
+    description: |
+      MinIO SDKで生成したPresigned URLが403を返す。
+      原因未特定（署名計算の不整合の可能性）。
+      現在はバケットをpublic downloadに設定して回避中。
+    workaround: "バケットをpublic download設定、直接URLを使用"
+    future_fix: |
+      本番環境ではPresigned URLを正しく動作させる必要あり。
+      MINIO_EXTERNAL_ENDPOINT設定とMinIO SDK署名計算を再調査。
+
+  - id: "CONSOLE-ERRORS"
+    severity: "low"
+    description: |
+      DevTools Consoleに22 errorsが表示されている（スクリーンショット参照）。
+      主にAPS Viewer SDKからのエラーと思われる。
+      機能動作には影響なし。
+    workaround: "なし（動作に影響なし）"
+
+architecture_notes:
+  state_flow: |
+    1. IssueList.onClick → handleSelectIssue(issue)
+    2. setSelectedIssue(issue) → focusDbId/focusPosition が変化
+    3. ApsViewer useEffect → programmaticSelectRef = true → viewer.select()
+    4. SELECTION_CHANGED_EVENT 発火 → programmaticSelectRef チェック → スキップ
+    5. 詳細パネルが正常に表示される
+
+  photo_flow: |
+    1. IssueDetail マウント → useEffect [issue.id] 発火
+    2. getPhotoUrl(issueId, photoId) 呼び出し
+    3. PhotosController → 直接URL生成（http://localhost:9000/issue-photos/{key}）
+    4. <img src={photoUrl}> で画像表示
+
+files_modified:
+  - path: "backend/Dockerfile"
+    changes: ".NET 10 GA, wget install, port 5001"
+  - path: "backend/src/Api/Controllers/PhotosController.cs"
+    changes: "直接URL返却に変更"
+  - path: "docker-compose.yml"
+    changes: "healthcheck を wget に変更"
+  - path: "frontend/Dockerfile"
+    changes: "build args 確認"
+  - path: "frontend/src/app/page.tsx"
+    changes: "handleHitTest ガード追加"
+  - path: "frontend/src/components/ApsViewer.tsx"
+    changes: "programmaticSelectRef 追加、SELECTION_CHANGED_EVENT ガード"
+  - path: "frontend/src/components/IssueDetail.tsx"
+    changes: "useEffect依存配列修正 [issue.id]"
+  - path: "frontend/src/components/IssueForm.tsx"
+    changes: "API_BASE ポート修正"
+  - path: "frontend/src/components/IssueList.tsx"
+    changes: "stopPropagation追加"
+  - path: "frontend/src/lib/api.ts"
+    changes: "API_BASE デフォルト5001、デバッグログ追加"
+
+next_steps:
+  priority_high: []
+  priority_medium:
+    - "Presigned URL 403問題の根本解決（本番環境向け）"
+    - "Console errorsの調査・解消"
+  priority_low:
+    - "E2Eテスト自動化"
+    - "CI/CD パイプライン構築"
+
+commands:
+  start: "docker compose up -d"
+  rebuild: "docker compose up --build -d"
+  logs: "docker compose logs -f"
+  frontend_only: "docker compose up --build -d frontend"
+  backend_only: "docker compose up --build -d backend"
+
+urls:
+  frontend: "http://localhost:3000"
+  backend_swagger: "http://localhost:5001/swagger"
+  backend_health: "http://localhost:5001/health"
+  minio_console: "http://localhost:9001"
+  minio_api: "http://localhost:9000"
+
+credentials:
+  minio:
+    username: "minioadmin"
+    password: "minioadmin"
+  postgres:
+    username: "postgres"
+    password: "postgres"
+    database: "issue_manager"
